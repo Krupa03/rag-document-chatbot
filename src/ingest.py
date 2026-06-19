@@ -1,4 +1,5 @@
 import os
+import chromadb
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -14,9 +15,9 @@ def load_pdf(file_path):
     print(f"Loaded {len(documents)} pages")
     return documents
 
-def chunk_documents(documents):
+def chunk_documents(documents, chunk_size=500):
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
+        chunk_size=chunk_size,
         chunk_overlap=50,
         length_function=len,
         separators=["\n\n", "\n", " ", ""]
@@ -28,15 +29,14 @@ def chunk_documents(documents):
 def embed_and_store(chunks, collection_name):
     print(f"Generating embeddings with HuggingFace all-MiniLM-L6-v2...")
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-    
+
     # Delete existing collection to avoid duplicates
-    import chromadb
     client = chromadb.PersistentClient(path=CHROMA_PATH)
     existing = [c.name for c in client.list_collections()]
     if collection_name in existing:
         client.delete_collection(collection_name)
         print(f"Deleted existing collection '{collection_name}'")
-    
+
     vectorstore = Chroma(
         collection_name=collection_name,
         embedding_function=embeddings,
@@ -47,10 +47,10 @@ def embed_and_store(chunks, collection_name):
     print(f"Stored {count} chunks in ChromaDB collection '{collection_name}'")
     return count
 
-def ingest(file_path):
+def ingest(file_path, chunk_size=500):
     collection_name = os.path.basename(file_path).replace(".pdf", "").replace(" ", "_")
     documents = load_pdf(file_path)
-    chunks = chunk_documents(documents)
+    chunks = chunk_documents(documents, chunk_size=chunk_size)
     count = embed_and_store(chunks, collection_name)
     return collection_name, count
 
