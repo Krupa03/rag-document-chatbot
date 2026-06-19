@@ -28,6 +28,15 @@ def chunk_documents(documents):
 def embed_and_store(chunks, collection_name):
     print(f"Generating embeddings with HuggingFace all-MiniLM-L6-v2...")
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    
+    # Delete existing collection to avoid duplicates
+    import chromadb
+    client = chromadb.PersistentClient(path=CHROMA_PATH)
+    existing = [c.name for c in client.list_collections()]
+    if collection_name in existing:
+        client.delete_collection(collection_name)
+        print(f"Deleted existing collection '{collection_name}'")
+    
     vectorstore = Chroma(
         collection_name=collection_name,
         embedding_function=embeddings,
